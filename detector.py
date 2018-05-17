@@ -1,29 +1,13 @@
 import numpy as np
-import os
+import shutil
 import sys
 import tensorflow as tf
 from PIL import Image
 from utils import label_map_util, visualization_utils
-
+from config import *
 # This is needed since the notebook is stored in the object_detection folder.
 sys.path.append("..")
 
-# Path to frozen detection graph (.pb)
-PATH_TO_CKPT = os.path.join(os.path.sep, 'mnt2', 'projects',
-                            'ai_dcDemoMultiFood', 'webDemo','ensembleAPI', 'models', 'frcnn.pb')
-
-# List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = 'foodinc_label_map.pbtxt'
-PATH_TO_ANNOTATION = ''
-
-# path of data directory
-folder_path = os.path.join(os.path.sep, 'mnt', 'dc', 'web_food_imgs',
-                           'miso_soup')
-#
-PATH_OF_SAVE = os.path.join(os.path.sep, 'mnt', 'dc', 'results_food_detector')
-
-PATH_OF_MULTIPLE_FOOD = os.path.join(os.path.sep, 'mnt', 'dc', 'web_food_imgs_multi_obj',
-                           'miso_soup')
 
 NUM_CLASSES = 67
 
@@ -110,28 +94,33 @@ def main():
 
                 # TODO
                 # save the info (one image one txt)
-                # label ymin xmin  ymax xmax
+                # label,ymin,xmin,ymax,xmax   (save as ratio)
                 if True:
-                    pass
+                    with open(PATH_TO_ANNOTATION, 'a+') as w:
+                        for bbox, c in zip(bbox_threshold, classes[0]):
+                            w.write('{},{},{},{},{}\n'.format(c, bbox[0], bbox[1], bbox[2], bbox[3]))
 
                 # move the data into single food, >2 food
                 if(len(thresholded_boxes)) > 1:
-                    pass
+                    shutil.move(image_path, os.path.join(folder_path, '2', os.path.basename(image_path)))
+                else:
+                    shutil.move(image_path, os.path.join(folder_path, '1', os.path.basename(image_path)))
 
-                """
-                # Visualization of the results of a detection.
-                visualization_utils.visualize_boxes_and_labels_on_image_array(
-                    image_np,
-                    np.asarray(thresholded_boxes), #np.squeeze(boxes),
-                    np.squeeze(classes).astype(np.int32),
-                    np.squeeze(scores), category_index,
-                    use_normalized_coordinates=True,
-                    line_thickness=8)
-                # plt.figure(figsize=IMAGE_SIZE)
-                # plt.imshow(image_np)
-                im = Image.fromarray(image_np)
-                im.save(os.path.join(PATH_OF_SAVE, image_path.split(os.path.sep)[-1]))
-                """
+                
+                # Visualization of the results of a detection
+                if SAVE_FIG:
+                    visualization_utils.visualize_boxes_and_labels_on_image_array(
+                        image_np,
+                        np.asarray(thresholded_boxes), #np.squeeze(boxes),
+                        np.squeeze(classes).astype(np.int32),
+                        np.squeeze(scores), category_index,
+                        use_normalized_coordinates=True,
+                        line_thickness=8)
+                    # plt.figure(figsize=IMAGE_SIZE)
+                    # plt.imshow(image_np)
+                    im = Image.fromarray(image_np)
+                    im.save(os.path.join(PATH_OF_SAVE_FIG, image_path.split(os.path.sep)[-1]))
+
     print('completed!')
 
 
