@@ -109,9 +109,9 @@ def main():
                         for bbox, c in zip(thresholded_boxes, classes[0]):
                             w.write('{},{},{},{},{}\n'.format(int(c), bbox[0], bbox[1], bbox[2], bbox[3]))
 
-                # move the data into single food, >2 food
-
-                if(len(thresholded_boxes)) > 1:
+                # move the data into single food,
+                # >2 food: multiple food or 67(bento)
+                if(len(thresholded_boxes)) > 1 or 67 in classes[0]:
                     if not os.path.exists(
                             os.path.join(os.path.dirname(image_path), '2')):
                         os.makedirs(
