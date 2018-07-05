@@ -4,14 +4,11 @@ import sys
 import tensorflow as tf
 from PIL import Image
 from utils import label_map_util, visualization_utils
-from config import *
+from fincv0_config import *
 # This is needed since the notebook is stored in the object_detection folder.
 sys.path.append("..")
 
 
-NUM_CLASSES = 67
-
-# load annotations
 def load_image_into_numpy_array(image):
   (im_width, im_height) = image.size
   image = image.convert('RGB')
@@ -33,7 +30,12 @@ def overlapped_ratio(area_1, area_2):
     else:
         return .0
 
+
 def read_file_list():
+    """
+    read all images files(including all subcategories) and return as a list
+    :return:
+    """
     data_list = []
     for dir in os.listdir(super_folder_path):
         if os.path.isdir(os.path.join(super_folder_path, dir)):
@@ -101,17 +103,18 @@ def main():
                     else:
                         break
 
-                # TODO
-                # save the info (one image one txt)
-                # label,ymin,xmin,ymax,xmax   (save as ratio)
+                # save the info (one image one txt) as the 'img_name.txt'
+                # under PATH_TO_ANNOTATION
                 if True:
                     with open(os.path.join(PATH_TO_ANNOTATION, os.path.basename(image_path) + '_.txt'), 'w') as w:
                         for bbox, c in zip(thresholded_boxes, classes[0]):
+                            # label ymin xmin ymax xmax   (save as ratio)
                             w.write('{},{},{},{},{}\n'.format(int(c), bbox[0], bbox[1], bbox[2], bbox[3]))
 
                 # move the data into single food,
                 # >2 food: multiple food or 67(bento)
-                if(len(thresholded_boxes)) > 1 or 67 in classes[0]:
+                """
+                if(len(thresholded_boxes)) > 1 or 67 in classes[0][:len(thresholded_boxes)]:
                     if not os.path.exists(
                             os.path.join(os.path.dirname(image_path), '2')):
                         os.makedirs(
@@ -129,7 +132,7 @@ def main():
                                             os.path.basename(image_path))
                     shutil.move(image_path, dst_path)
                     print(dst_path)
-
+                """
                 
                 # Visualization of the results of a detection
                 if SAVE_FIG:

@@ -1,5 +1,5 @@
 import os
-
+import numpy as np
 
 UEC256 = ['rice', 'eels on rice', 'pilaf', "chicken-'n'-egg on rice", 'pork cutlet on rice', 'beef curry',
           'sushi', 'chicken rice', 'fried rice', 'tempura bowl', 'bibimbap', 'toast', 'croissant', 'roll bread',
@@ -48,6 +48,21 @@ UEC256 = ['rice', 'eels on rice', 'pilaf', "chicken-'n'-egg on rice", 'pork cutl
 folder_path = os.path.join(os.path.sep, 'mnt', 'diet', 'UECFOOD256')
 
 
+def get_file_list(dir_path):
+    """
+    return abs_path of all files who ends with __ in all sub-directories as a list
+    """
+    file_list = []
+    for f in os.listdir(dir_path):
+        path = os.path.join(dir_path, f)
+        if os.path.isdir(path):
+            file_list = file_list + get_file_list(path)
+        elif f.endswith(('.jpg', 'jpeg', '.png', '.bmp', '.JPG', 'JPEG', '.PNG', '.BMP')):
+            file_list.append(path)
+
+    return file_list
+
+
 def show_num_category_UEC():
     nums = []
     for i in range(1, 257):
@@ -61,9 +76,58 @@ def show_num_category_UEC():
     print(sorted(nums_names.items(), key=lambda d:d[1],reverse=False))
 
 
+def split_data(ids, split_percentage=20, stratified=True):
+    num_all = len(ids)
+
+    shuffled_index = np.random.permutation(
+        np.arange(num_all))  # make a shuffle idx array
+
+    # calcualate the train & validation index
+    num_small = int(num_all // (100 / split_percentage))
+    num_big = num_all - num_small
+
+    ix_big = shuffled_index[:num_big]
+    ix_small = shuffled_index[num_big:]
+
+    # divide
+    id_big = []
+    for idx in ix_big:
+        id_big.append(ids[idx])
+    id_small = []
+    for idx in ix_small:
+        id_small.append(ids[idx])
+
+    print('num of id_big = ', len(id_big))
+    print('num of id_small = ', len(id_small))
+
+    # y_valid must be np array as 'int64'
+    return id_big, id_small
+
+
+def labelmap_maker(category_path, labelmap_path):
+    """
+    make label_map using categories
+    """
+    with open(labelmap_path, 'w') as writer:
+        with open(category_path, 'r') as reader:
+            reader.readline() # skip first line
+            for id, l in enumerate(reader.readlines()):
+                category = l.rstrip().split('	')[1]
+                print('item {')
+                print('  id: {}'.format(id+1))
+                print('  name: '"'{}'"''.format(category))
+                print('}\n')
+                writer.write('item {\n')
+                writer.write('  id: {}\n'.format(id+1))
+                writer.write('  name: '"'{}'"'\n'.format(category))
+                writer.write('}\n\n')
+
+
+
+
 def main():
     print('')
-    show_num_category_UEC()
+
 
 
 if __name__ == '__main__':

@@ -1,3 +1,14 @@
+"""
+file processor for UEC
+
+UEC256 structure:
+    *1 ~ 256 folders as 256 categories.
+    *bb_infos.txt is the annotations only contains bounding boxes of one categories(corresponding to this folder)
+     , so that means there are same image in different categories
+
+* create feasible annotations(one txt with all bounding boxes info)@ create_annotation_UEC
+* create TF RECORD for @main
+"""
 import hashlib
 import io
 import logging
@@ -7,32 +18,33 @@ import numpy as np
 
 import PIL.Image
 import tensorflow as tf
-
-from utils import dataset_util
+from utils.tools import split_data
+import dataset_util
 
 """
 python object_detection/train.py \
     --logtostderr \
     --pipeline_config_path='/mnt/code/models/object_detection/faster_rcnn_inception_resnet_v2_UEC.config' \
-    --train_dir='/mnt/diet/tf_obj_ckpt'
+    --train_dir='/mnt/dc/tf_obj_ckpt'
 """
 
-img_dir = os.path.join(os.path.sep, 'mnt', 'diet', 'UECFOOD256', 'all_imgs')
+img_dir = os.path.join(os.path.sep, 'mnt/dc', 'UEC256all')
 
-output_train_path = os.path.join(os.path.sep, 'mnt', 'diet', 'tfrecords',
+output_train_path = os.path.join(os.path.sep, 'mnt', 'dc', 'tfrecords',
                                  'UEC256_train.record')
-output_eval_path = os.path.join(os.path.sep, 'mnt', 'diet', 'tfrecords',
+output_eval_path = os.path.join(os.path.sep, 'mnt', 'dc', 'tfrecords',
                                 'UEC256_eval.record')
 
-category_path = os.path.join(os.path.sep, 'mnt', 'diet', 'UECFOOD256',
-                             'category.txt')
-annotation_dir = os.path.join(os.path.sep, 'mnt', 'diet', 'UECFOOD256',
-                              'annotations')
+category_path = os.path.join(os.path.sep, '/mnt/dc', 'UECFOOD256', 'category.txt')
+annotation_dir = os.path.join(os.path.sep, '/mnt/dc/UEC_ground_truth')
 
 
 def create_annotation_UEC():
+    """
+    create feasible annotations(one txt with all bounding boxes info)
+    """
     for i in range(1, 257):
-        with open(os.path.join(os.path.sep, 'mnt', 'diet', 'UECFOOD256', str(i),
+        with open(os.path.join(os.path.sep, '/mnt/dc/UECFOOD256', str(i),
                                'bb_info.txt'), 'r') as r:
             r.readline()  # discard ths first line
             for line in r.readlines():
@@ -92,47 +104,36 @@ def dict_to_tf_example(data, categories_name):
     return example
 
 
-def split_data(ids, split_percentage=20, stratified=True):
-    num_all = len(ids)
+def show_nb_bbox_for_each_images():
+    annotation_list = [ os.path.join(annotation_dir, f) for f in os.listdir(annotation_dir) if f.endswith(('.txt'))]
+    ground_truth_bbox_info = {}
+    for f in annotation_list:
+        c = 0
+        with open(f, 'r') as r:
+            for l in r.readlines():
+                c += 1
+        ground_truth_bbox_info[os.path.basename(f)] = c
 
-    shuffled_index = np.random.permutation(
-        np.arange(num_all))  # make a shuffle idx array
-
-    # calcualate the train & validation index
-    num_small = int(num_all // (100 / split_percentage))
-    num_big = num_all - num_small
-
-    ix_big = shuffled_index[:num_big]
-    ix_small = shuffled_index[num_big:]
-
-    # divide
-    id_big = []
-    for idx in ix_big:
-        id_big.append(ids[idx])
-    id_small = []
-    for idx in ix_small:
-        id_small.append(ids[idx])
-
-    print('num of id_big = ', len(id_big))
-    print('num of id_small = ', len(id_small))
-
-    # y_valid must be np array as 'int64'
-    return id_big, id_small
+    for k, v in ground_truth_bbox_info.items():
+        print(k, v)
 
 
 def main(_):
-    print('holiday working~!')
+    """
+    make annotation and check the info
+    """
     # create_annotation_UEC()
+    #TODO should show the nb of each category
+    #show_nb_bbox_for_each_images()
+    #exit()
 
-    """
-    category.txt: a list with all category names
-    """
+    # category.txt: a list with all category names
     categories_name = []
     with open(category_path, 'r') as r:
         # discard the first line
         r.readline()
         for line in r.readlines():
-            # print(line.rstrip().split('\t')[-1])
+            print(line.rstrip().split('\t')[-1])
             categories_name.append(line.rstrip().split('\t')[-1])
 
     img_list = os.listdir(img_dir)
@@ -155,8 +156,7 @@ def main(_):
             *one for one images
             *label bboxes_info1 info2 info 3 info4 => * number of bbox
         """
-        anno_path = os.path.join(annotation_dir,
-                                 str(img_f.split('.')[0]) + '.txt')
+        anno_path = os.path.join(annotation_dir, str(os.path.splitext(img_f)[0]) + '.txt')
         bboxes = []
         labels = []
         with open(anno_path, 'r') as r:
