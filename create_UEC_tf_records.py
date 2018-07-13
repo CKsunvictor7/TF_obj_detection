@@ -21,14 +21,8 @@ import tensorflow as tf
 from utils.tools import split_data
 import dataset_util
 
-"""
-python object_detection/train.py \
-    --logtostderr \
-    --pipeline_config_path='/mnt/code/models/object_detection/faster_rcnn_inception_resnet_v2_UEC.config' \
-    --train_dir='/mnt/dc/tf_obj_ckpt'
-"""
 
-img_dir = os.path.join(os.path.sep, 'mnt/dc', 'UEC256all')
+img_dir = os.path.join(os.path.sep, 'mnt/dc', 'UEC256_images')
 
 output_train_path = os.path.join(os.path.sep, 'mnt', 'dc', 'tfrecords',
                                  'UEC256_train.record')
@@ -57,9 +51,11 @@ def create_annotation_UEC():
 
 
 def dict_to_tf_example(data, categories_name):
+    print(data['abs_img_path'])
     with tf.gfile.GFile(data['abs_img_path'], 'rb') as fid:
         encoded_jpg = fid.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
+    # TODO: OSError: cannot identify image file <_io.BytesIO object at 0x7f56dd982a98>
     image = PIL.Image.open(encoded_jpg_io)
     if image.format != 'JPEG':
         raise ValueError('Image format not JPEG')
@@ -136,11 +132,11 @@ def main(_):
             print(line.rstrip().split('\t')[-1])
             categories_name.append(line.rstrip().split('\t')[-1])
 
-    img_list = os.listdir(img_dir)
+    img_list = [f for f in os.listdir(img_dir) if f.endswith('.jpg')]
     print("num of imgs = ", len(img_list))
 
     # TODO class balance
-    train_list, eval_list = split_data(img_list)
+    train_list, eval_list = split_data(img_list, split_percentage=10)
 
     # tf.initialize_all_variables().run()
     writer = tf.python_io.TFRecordWriter(output_train_path)
@@ -156,7 +152,7 @@ def main(_):
             *one for one images
             *label bboxes_info1 info2 info 3 info4 => * number of bbox
         """
-        anno_path = os.path.join(annotation_dir, str(os.path.splitext(img_f)[0]) + '.txt')
+        anno_path = os.path.join(annotation_dir, str(os.path.splitext(img_f)[0]))
         bboxes = []
         labels = []
         with open(anno_path, 'r') as r:
@@ -192,8 +188,7 @@ def main(_):
             *one for one images
             *label xmin ymin xmax ymax => * number of bbox
         """
-        anno_path = os.path.join(annotation_dir,
-                                 str(img_f.split('.')[0]) + '.txt')
+        anno_path = os.path.join(annotation_dir, str(img_f.split('.')[0]))
         bboxes = []
         labels = []
         with open(anno_path, 'r') as r:

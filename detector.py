@@ -4,7 +4,8 @@ import sys
 import tensorflow as tf
 from PIL import Image
 from utils import label_map_util, visualization_utils
-from fincv0_config import *
+from UEC256_config import *
+# from utils import ops as utils_ops
 # This is needed since the notebook is stored in the object_detection folder.
 sys.path.append("..")
 
@@ -31,21 +32,74 @@ def overlapped_ratio(area_1, area_2):
         return .0
 
 
-def read_file_list():
+def get_file_list(dir_path, extensions):
     """
-    read all images files(including all subcategories) and return as a list
-    :return:
+    return abs_path of all files who ends with __ in all sub-directories as a list
+    extensions: a tuple to specify the file extension
+    ex: ('.jpg', 'jpeg', '.png', '.bmp', '.JPG', 'JPEG', '.PNG', '.BMP')
     """
-    data_list = []
-    for dir in os.listdir(super_folder_path):
-        if os.path.isdir(os.path.join(super_folder_path, dir)):
-            data_list = data_list + \
-                    [os.path.join(super_folder_path, dir, f) for f in os.listdir(os.path.join(super_folder_path, dir))
-                     if f.endswith(('.jpg', 'jpeg','.png', '.bmp', '.JPG', 'JPEG','.PNG', '.BMP'))]
-    return data_list
+    file_list = []
+    for f in os.listdir(dir_path):
+        path = os.path.join(dir_path, f)
+        if os.path.isdir(path):
+            file_list = file_list + get_file_list(path, extensions)
+        elif f.endswith(extensions):
+            file_list.append(path)
 
+    return file_list
+
+"""
+def run_inference_for_single_image(image, graph):
+  with graph.as_default():
+    with tf.Session() as sess:
+      # Get handles to input and output tensors
+      ops = tf.get_default_graph().get_operations()
+      all_tensor_names = {output.name for op in ops for output in op.outputs}
+      tensor_dict = {}
+      for key in [
+          'num_detections', 'detection_boxes', 'detection_scores',
+          'detection_classes', 'detection_masks'
+      ]:
+        tensor_name = key + ':0'
+        if tensor_name in all_tensor_names:
+          tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(
+              tensor_name)
+      if 'detection_masks' in tensor_dict:
+        # The following processing is only for single image
+        detection_boxes = tf.squeeze(tensor_dict['detection_boxes'], [0])
+        detection_masks = tf.squeeze(tensor_dict['detection_masks'], [0])
+        # Reframe is required to translate mask from box coordinates to image coordinates and fit the image size.
+        real_num_detection = tf.cast(tensor_dict['num_detections'][0], tf.int32)
+        detection_boxes = tf.slice(detection_boxes, [0, 0], [real_num_detection, -1])
+        detection_masks = tf.slice(detection_masks, [0, 0, 0], [real_num_detection, -1, -1])
+        detection_masks_reframed = utils_ops.reframe_box_masks_to_image_masks(
+            detection_masks, detection_boxes, image.shape[0], image.shape[1])
+        detection_masks_reframed = tf.cast(
+            tf.greater(detection_masks_reframed, 0.5), tf.uint8)
+        # Follow the convention by adding back the batch dimension
+        tensor_dict['detection_masks'] = tf.expand_dims(
+            detection_masks_reframed, 0)
+      image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
+
+      # Run inference
+      output_dict = sess.run(tensor_dict,
+                             feed_dict={image_tensor: np.expand_dims(image, 0)})
+      # all outputs are float32 numpy arrays, so convert types as appropriate
+      output_dict['num_detections'] = int(output_dict['num_detections'][0])
+      output_dict['detection_classes'] = output_dict[
+          'detection_classes'][0].astype(np.uint8)
+      output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
+      output_dict['detection_scores'] = output_dict['detection_scores'][0]
+      if 'detection_masks' in output_dict:
+          output_dict['detection_masks'] = output_dict['detection_masks'][0]
+    return output_dict
+"""
 
 def main():
+    TEST_IMAGE_PATHS = get_file_list(super_folder_path, (
+    '.jpg', 'jpeg', '.png', '.bmp', '.JPG', 'JPEG', '.PNG', '.BMP'))
+    print('num of images = {}'.format(len(TEST_IMAGE_PATHS)))
+
     # Load a (frozen) Tensorflow model into memory
     detection_graph = tf.Graph()
     with detection_graph.as_default():
@@ -60,20 +114,19 @@ def main():
     categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
     category_index = label_map_util.create_category_index(categories)
 
-    TEST_IMAGE_PATHS = read_file_list()
-    print('num of images = {}'.format(len(TEST_IMAGE_PATHS)))
-
     print('detecting...')
     with detection_graph.as_default():
         with tf.Session(graph=detection_graph) as sess:
             for image_path in TEST_IMAGE_PATHS:
                 print('now detecting ', image_path)
                 image = Image.open(image_path)
+                print(image.size)
                 # the array based representation of the image will be used later in order to prepare the
                 # result image with boxes and labels on it.
                 image_np = load_image_into_numpy_array(image)
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
+
                 image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
                 # Each box represents a part of the image where a particular object was detected.
                 boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
@@ -83,6 +136,7 @@ def main():
                 classes = detection_graph.get_tensor_by_name('detection_classes:0')
                 num_detections = detection_graph.get_tensor_by_name('num_detections:0')
                 # Actual detection.
+                # bug here: InvalidArgumentError: NodeDef mentions attr 'identical_element_shapes'
                 (boxes, scores, classes, num_detections) = sess.run(
                     [boxes, scores, classes, num_detections],
                     feed_dict={image_tensor: image_np_expanded})
@@ -104,12 +158,13 @@ def main():
                         break
 
                 # save the info (one image one txt) as the 'img_name.txt'
-                # under PATH_TO_ANNOTATION
+                # under PATH_TO_SAVE_RESULTS
                 if True:
-                    with open(os.path.join(PATH_TO_ANNOTATION, os.path.basename(image_path) + '_.txt'), 'w') as w:
+                    with open(os.path.join(PATH_TO_SAVE_RESULTS, os.path.basename(image_path) + '_.txt'), 'w') as w:
                         for bbox, c in zip(thresholded_boxes, classes[0]):
                             # label ymin xmin ymax xmax   (save as ratio)
                             w.write('{},{},{},{},{}\n'.format(int(c), bbox[0], bbox[1], bbox[2], bbox[3]))
+                            print('{},{},{},{},{}'.format(int(c), bbox[0], bbox[1], bbox[2], bbox[3]))
 
                 # move the data into single food,
                 # >2 food: multiple food or 67(bento)
