@@ -17,24 +17,10 @@ from PIL import Image
 # This is needed since the notebook is stored in the object_detection folder.
 sys.path.append("..")
 from object_detection.utils import ops as utils_ops
+from utils import visualization_utils, label_map_util
 
 if tf.__version__ < '1.4.0':
   raise ImportError('Please upgrade your tensorflow installation to v1.4.* or later!')
-
-
-# Path to frozen detection graph, the actual model that is used for the object detection.
-PATH_TO_CKPT = os.path.join(os.path.sep, 'mnt', 'dc', 'pb_UEC256_Res101_378643',
-                            'frozen_inference_graph.pb')
-# List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = os.path.join(os.path.sep, 'mnt2', 'projects', 'TF_obj_detection', 'label_maps', 'UEC_label_map.pbtxt')
-
-NUM_CLASSES = 256
-
-
-def load_image_into_numpy_array(image):
-  (im_width, im_height) = image.size
-  return np.array(image.getdata()).reshape(
-      (im_height, im_width, 3)).astype(np.uint8)
 
 
 def get_file_list(dir_path, extensions):
@@ -52,11 +38,44 @@ def get_file_list(dir_path, extensions):
             file_list.append(path)
 
     return file_list
-super_folder_path = os.path.join(os.path.sep, '/mnt/dc/', 'UEC256_images')
-TEST_IMAGE_PATHS = get_file_list(super_folder_path, (
-    '.jpg', 'jpeg', '.png', '.bmp', '.JPG', 'JPEG', '.PNG', '.BMP'))
-print('num of images = {}'.format(len(TEST_IMAGE_PATHS)))
 
+
+def load_image_into_numpy_array(image):
+  (im_width, im_height) = image.size
+  return np.array(image.getdata()).reshape(
+      (im_height, im_width, 3)).astype(np.uint8)
+
+# Faster_RCNN_ResNet101_Foodinc_950k.pb
+
+finc_v0 = {
+    'NUM_CLASSES':67,
+    # Path to frozen detection graph, the exp13_detection_155exp13_detection_155exp13_detection_155actual model that is used for the object detection.
+    'PATH_TO_CKPT':os.path.join(os.path.sep, '/mnt2/models', 'Faster_RCNN_ResNet101_Foodinc_950k.pb'),
+    # List of the strings that is used to add correct label for each box.
+    'PATH_TO_LABELS':'label_maps/foodinc_label_map.pbtxt',
+    'IMG_PATH':os.path.join(os.path.sep, '/mnt2/DB/155'),
+    'SAVE_FIG':True,
+    'PATH_OF_SAVE_FIG':'/mnt2/results/fincv0_155',
+    'SHOW_INFO':False
+}
+
+exp13 = {
+    'NUM_CLASSES':110,
+    # Path to frozen detection graph, the exp13_detection_155exp13_detection_155exp13_detection_155actual model that is used for the object detection.
+    'PATH_TO_CKPT':os.path.join(os.path.sep, '/mnt2/models/pb/exp13',
+                                'frozen_inference_graph.pb'),
+    # List of the strings that is used to add correct label for each box.
+    'PATH_TO_LABELS':os.path.join(os.path.sep, '/mnt2/projects/TF_obj_detection/label_maps',
+                                  'exp13_label_map.pbtxt'),
+    'IMG_PATH':os.path.join(os.path.sep, '/mnt2/DB/155'),
+    'SAVE_FIG':True,
+    'PATH_OF_SAVE_FIG':'/mnt2/results/TF_visualization_export_dir',
+    'SHOW_INFO':False,
+}
+config = exp13
+
+TEST_IMAGE_PATHS = get_file_list(config['IMG_PATH'], ('.jpg', 'jpeg', '.png', '.bmp', '.JPG', 'JPEG', '.PNG', '.BMP'))
+print('num of images = {}'.format(len(TEST_IMAGE_PATHS)))
 
 
 def main():
@@ -65,11 +84,17 @@ def main():
     detection_graph = tf.Graph()
     with detection_graph.as_default():
         od_graph_def = tf.GraphDef()
-        with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
+        with tf.gfile.GFile(config['PATH_TO_CKPT'], 'rb') as fid:
             serialized_graph = fid.read()
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')
-    print('loading model done, took {}'.format( time.time() - s_time))
+    print('loading model done, took {} sec'.format( time.time() - s_time))
+
+    # convert id to category name
+    label_map = label_map_util.load_labelmap(config['PATH_TO_LABELS'])
+    categories = label_map_util.convert_label_map_to_categories(
+        label_map, max_num_classes=config['NUM_CLASSES'], use_display_name=True)
+    category_index = label_map_util.create_category_index(categories)
 
     with detection_graph.as_default():
         with tf.Session() as sess:
@@ -94,8 +119,8 @@ def main():
                 # result image with boxes and labels on it.
                 image_np = load_image_into_numpy_array(image)
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-                image_np = np.expand_dims(image_np, 0)
-                img_batch = image_np
+                img_batch = np.expand_dims(image_np, 0)
+                #img_batch = image_np
 
                 # example code of using batch images
                 BATCH = False
@@ -129,8 +154,7 @@ def main():
                     'image_tensor:0')
 
                 # Run inference
-                output_dict = sess.run(tensor_dict,
-                                       feed_dict={image_tensor: img_batch})
+                output_dict = sess.run(tensor_dict, feed_dict={image_tensor: img_batch})
 
                 # all outputs are float32 numpy arrays, so convert types as appropriate
                 output_dict['num_detections'] = int(output_dict['num_detections'][0])
@@ -147,11 +171,32 @@ def main():
                 default we get 300 bounding boxes, with classes and score
                 the order is from big to small by score
                 """
-                print('num_detections = ', output_dict['num_detections'])
-                print('top 3 boxes:')
-                for i in range(3):
-                    print('bbox-{} = {}, score={}, bbox={}'.format(i+1,
-                    output_dict['detection_classes'][i], output_dict['detection_scores'][i], output_dict['detection_boxes'][i]))
+                if config['SHOW_INFO']:
+                    print('num_detections = ', output_dict['num_detections'])
+                    print('top 3 boxes:')
+                    for i in range(3):
+                        print('bbox-{} = {}, score={}, bbox={}'.format(i+1,
+                        output_dict['detection_classes'][i], output_dict['detection_scores'][i], output_dict['detection_boxes'][i]))
+
+                    print('detection_classes = ', output_dict['detection_classes'])
+                    print('detection_scores = ', output_dict['detection_scores'])
+                    for i in output_dict['detection_boxes']:
+                        print(i)
+
+                # print
+                # TODO: debug
+                if config['SAVE_FIG']:
+                    visualization_utils.visualize_boxes_and_labels_on_image_array(
+                        image_np,
+                        np.asarray(output_dict['detection_boxes']), #np.squeeze(boxes),
+                        np.squeeze(output_dict['detection_classes']).astype(np.int32),
+                        np.squeeze(output_dict['detection_scores']), category_index,
+                        use_normalized_coordinates=True,
+                        line_thickness=8)
+                    # plt.figure(figsize=IMAGE_SIZE)
+                    # plt.imshow(image_np)
+                    im = Image.fromarray(image_np)
+                    im.save(os.path.join(config['PATH_OF_SAVE_FIG'], image_path.split(os.path.sep)[-1]))
 
 
 if __name__ == '__main__':

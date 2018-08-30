@@ -146,7 +146,6 @@ def get_category_name(s):
             ss = ss + '_' + x
     return ss
 
-
 def filelist_writer():
     # path = '/Users/fincep004/Desktop/nonfood_FN'
     # with open('nonFood_FN_cases.txt', 'a+') as w:
@@ -161,8 +160,6 @@ def food_filter(dir_path, nonfood_list):
     with open(nonfood_list, 'r') as r:
         for line in r.readlines():
             os.remove(os.path.join(dir_path, line.rstrip()))
-
-
 
 def main():
     path = '/mnt/dc/web_food_imgs_f/'

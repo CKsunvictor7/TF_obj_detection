@@ -21,7 +21,7 @@ import tensorflow as tf
 from google.protobuf import text_format
 # TODO
 # /mnt2/projects/models/research/object_detection
-from TF_obj_api.research.object_detection.protos import string_int_label_map_pb2
+from TF_framework.research.object_detection.protos import string_int_label_map_pb2
 # from object_detection.protos import string_int_label_map_pb2
 
 def _validate_label_map(label_map):
