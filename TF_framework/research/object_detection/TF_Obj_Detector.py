@@ -72,7 +72,39 @@ exp13 = {
     'PATH_OF_SAVE_FIG':'/mnt2/results/TF_visualization_export_dir',
     'SHOW_INFO':False,
 }
-config = exp13
+
+exp15_gpu8 = {
+    'NUM_CLASSES': 130,
+    # Path to frozen detection graph, the exp13_detection_155exp13_detection_155exp13_detection_155actual model that is used for the object detection.
+    'PATH_TO_CKPT': os.path.join(os.path.sep, '/mnt2/models/pb/exp15',
+                                 'frozen_inference_graph.pb'),
+    # List of the strings that is used to add correct label for each box.
+    'PATH_TO_LABELS': os.path.join(os.path.sep,
+                                   '/mnt2/projects/TF_obj_detection/label_maps',
+                                   'exp15_label_map.pbtxt'),
+    'IMG_PATH': os.path.join(os.path.sep, '/mnt2/DB/test_samples/'),
+    'SAVE_FIG': True,
+    'PATH_OF_SAVE_FIG': '/mnt2/DB/test_samples/test_vis/',#'/mnt2/results/exp15_on156_vis',
+    'SHOW_INFO': False,
+}
+
+exp16_gpu8 = {
+    'NUM_CLASSES': 165,
+    # Path to frozen detection graph, the exp13_detection_155exp13_detection_155exp13_detection_155actual model that is used for the object detection.
+    'PATH_TO_CKPT': os.path.join(os.path.sep, '/mnt2/models/pb/exp16_772399',
+                                 'frozen_inference_graph.pb'),
+    # List of the strings that is used to add correct label for each box.
+    'PATH_TO_LABELS': os.path.join(os.path.sep,
+                                   '/mnt2/projects/TF_obj_detection/label_maps',
+                                   'exp16_label_map.pbtxt'),
+    'IMG_PATH': os.path.join(os.path.sep, '/mnt2/DB/test_samples/'), # '/mnt2/DB/156'
+    'SAVE_FIG': True,
+    'PATH_OF_SAVE_FIG': '/mnt2/DB/test_samples/test_vis/',
+    'SHOW_INFO': False,
+}
+
+config = exp16_gpu8
+
 
 TEST_IMAGE_PATHS = get_file_list(config['IMG_PATH'], ('.jpg', 'jpeg', '.png', '.bmp', '.JPG', 'JPEG', '.PNG', '.BMP'))
 print('num of images = {}'.format(len(TEST_IMAGE_PATHS)))

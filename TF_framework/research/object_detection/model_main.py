@@ -26,7 +26,6 @@ from object_detection import model_hparams
 from object_detection import model_lib_test
 from object_detection import model_lib
 
-
 flags.DEFINE_string(
     'model_dir', None, 'Path to output model directory '
     'where event and checkpoint files will be written.')
@@ -52,10 +51,13 @@ FLAGS = flags.FLAGS
 
 
 def main(unused_argv):
-  print('~~~')
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
-  config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir)
+  # for exp16 & frcnn: 27198(training_data)/1(batch_size) = 27198 iteration/epoch
+  #config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir, save_checkpoints_steps=27198, keep_checkpoint_max=20)
+  # #for exp15 & ssd: 26481(training_data)/4(batch_size) = 6620 iteration/epoch
+  config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir, save_checkpoints_steps=6620, keep_checkpoint_max=20)
+
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
       hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
@@ -83,7 +85,7 @@ def main(unused_argv):
                          checkpoint_path=tf.train.latest_checkpoint(
                              FLAGS.checkpoint_dir))
     else:
-      model_lib.continuous_eval(estimator, FLAGS.model_dir, input_fn,
+      model_lib.continuous_eval(estimator, FLAGS.checkpoint_dir, input_fn,
                                 eval_steps, train_steps, name)
   else:
     train_spec, eval_specs = model_lib.create_train_and_eval_specs(
