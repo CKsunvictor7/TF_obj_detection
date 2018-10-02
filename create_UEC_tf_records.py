@@ -34,7 +34,6 @@ import numpy as np
 
 import PIL.Image
 import tensorflow as tf
-from utils.tools import split_data
 import dataset_util
 import pandas as pd
 
@@ -56,9 +55,18 @@ gpu8_exp16 = {
     'output_val_path':'/mnt2/DB/TFrecord/UEC_exp16_val.record',
 }
 
+gpu4_exp16 = {
+    "img_dir":'/mnt2/DB/exp15',
+    "YOLO_DIR":'/mnt2/DB/exp16_annos',
+    'category_path':'label_maps/exp16.names',
+    'label_maps_path':'label_maps/exp16_label_map.pbtxt',
+    'output_train_path':'/mnt2/DB/TFrecord/UEC_exp16_train.record',
+    'output_val_path':'/mnt2/DB/TFrecord/UEC_exp16_val.record',
+}
+
 DEBUG = False
 
-server = gpu8_exp16
+server = gpu4_exp16
 
 
 def create_annotation_UEC():
@@ -77,6 +85,33 @@ def create_annotation_UEC():
                         '{} {} {} {} {}\n'.format(i, arrs[1], arrs[2], arrs[3],
                                                   arrs[4]))
 
+
+def split_data(ids, split_percentage=20, stratified=True):
+    num_all = len(ids)
+
+    shuffled_index = np.random.permutation(
+        np.arange(num_all))  # make a shuffle idx array
+
+    # calcualate the train & validation index
+    num_small = int(num_all // (100 / split_percentage))
+    num_big = num_all - num_small
+
+    ix_big = shuffled_index[:num_big]
+    ix_small = shuffled_index[num_big:]
+
+    # divide
+    id_big = []
+    for idx in ix_big:
+        id_big.append(ids[idx])
+    id_small = []
+    for idx in ix_small:
+        id_small.append(ids[idx])
+
+    print('num of id_big = ', len(id_big))
+    print('num of id_small = ', len(id_small))
+
+    # y_valid must be np array as 'int64'
+    return id_big, id_small
 
 def dict_to_tf_example(data, categories_name):
     #print(data['abs_img_path'])

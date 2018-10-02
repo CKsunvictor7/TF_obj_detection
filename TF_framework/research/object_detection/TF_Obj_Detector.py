@@ -1,3 +1,10 @@
+"""
+based on object_detection_tutorial.ipynb
+
+this code loads a obj detection model and the corresponding label_maps,
+then do detection on images and save the results as images
+"""
+
 import numpy as np
 import os
 import six.moves.urllib as urllib
@@ -216,7 +223,6 @@ def main():
                         print(i)
 
                 # print
-                # TODO: debug
                 if config['SAVE_FIG']:
                     visualization_utils.visualize_boxes_and_labels_on_image_array(
                         image_np,
